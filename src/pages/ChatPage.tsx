@@ -36,12 +36,13 @@ export const ChatPage: React.FC = () => {
   // Check if API key is available for selected engine
   const getApiKey = (engine: string) => {
     switch (engine) {
-      case 'qwen':
-        return organization?.settings?.apiKeys?.qwen;
       case 'openai':
         return organization?.settings?.apiKeys?.openai;
       case 'docintel':
         return organization?.settings?.apiKeys?.docintel;
+      case 'qwen':
+        // For Qwen, we now use the proxy server, so we don't need the API key on frontend
+        return 'proxy-configured';
       default:
         return null;
     }
@@ -85,8 +86,6 @@ export const ChatPage: React.FC = () => {
       let responseContent = '';
       
       if (selectedAiEngine === 'qwen') {
-        const qwenApiKey = getApiKey('qwen');
-        
         // Prepare context from selected folder and files
         let contextInfo = '';
         if (selectedFolder && folderFiles.length > 0) {
@@ -106,53 +105,29 @@ ${summaries ? `File Summaries:\n${summaries}\n\n` : ''}
           `.trim();
         }
         
-        // Make API call to Qwen
-        const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
+        // Make API call to Qwen via proxy server
+        const response = await fetch('/api/qwen-proxy', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${qwenApiKey}`,
-            'X-DashScope-SSE': 'disable'
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'qwen-plus',
-            input: {
-              messages: [
-                {
-                  role: 'system',
-                  content: 'You are an AI assistant specialized in document analysis and OCR. You can analyze documents, extract information, and answer questions about their content. Provide helpful, accurate, and detailed responses based on the document context provided.'
-                },
-                {
-                  role: 'user',
-                  content: contextInfo ? `Context: ${contextInfo}\n\nQuestion: ${message}` : message
-                }
-              ]
-            },
-            parameters: {
-              temperature: 0.7,
-              max_tokens: 1500,
-              result_format: 'message'
-            }
+            contextInfo,
+            userMessage: message
           })
         });
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(`Qwen API error (${response.status}): ${errorData.message || 'Unknown error'}`);
+          throw new Error(errorData.error || `Proxy server error (${response.status})`);
         }
         
         const data = await response.json();
-        
-        // Extract response content from Qwen API response
-        if (data.output && data.output.choices && data.output.choices[0] && data.output.choices[0].message) {
-          responseContent = data.output.choices[0].message.content;
-        } else {
-          throw new Error('Invalid response format from Qwen API');
-        }
+        responseContent = data.content || 'No response received from Qwen API';
         
       } else if (selectedAiEngine === 'openai') {
-        // OpenAI implementation
-        const openaiApiKey = getApiKey('openai');
+        // OpenAI implementation - can also use proxy if desired
+        const openaiApiKey = organization?.settings?.apiKeys?.openai;
         
         // Prepare context from selected folder and files
         let contextInfo = '';
@@ -229,12 +204,12 @@ ${summaries ? `File Summaries:\n${summaries}\n\n` : ''}
       // Handle specific error types for better user guidance
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
         if (selectedAiEngine === 'qwen') {
-          errorMessage = 'Connection to Qwen API failed. Please check: 1) Your Qwen API key is valid and active, 2) Your network allows connections to dashscope.aliyuncs.com, 3) Try again in a few moments as this may be a temporary server issue.';
+          errorMessage = 'Connection to Qwen proxy server failed. Please ensure: 1) The proxy server is running on localhost:3001, 2) Your Qwen API key is configured on the server, 3) Try refreshing the page and trying again.';
         } else {
           errorMessage = `Connection to ${selectedAiEngine.toUpperCase()} API failed. Please check your API key and network connection.`;
         }
       } else {
-        errorMessage = `Sorry, I encountered an error while processing your request: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your API configuration in Settings and try again.`;
+        errorMessage = `Sorry, I encountered an error while processing your request: ${error instanceof Error ? error.message : 'Unknown error'}. ${selectedAiEngine === 'qwen' ? 'Please ensure the proxy server is running.' : 'Please check your API configuration in Settings and try again.'}`;
       }
       
       const errorResponse = {

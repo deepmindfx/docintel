@@ -6,6 +6,15 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Add process error handlers
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -176,10 +185,20 @@ app.post('/api/openai-proxy', async (req, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`Proxy server running on http://localhost:${PORT}`);
+  console.log('Environment check:');
+  console.log(`- QWEN_API_KEY configured: ${process.env.QWEN_API_KEY ? 'Yes' : 'No'}`);
+  console.log(`- OPENAI_API_KEY configured: ${process.env.OPENAI_API_KEY ? 'Yes' : 'No'}`);
   console.log('Available endpoints:');
   console.log(`  GET  /health - Health check`);
   console.log(`  POST /api/qwen-proxy - Qwen API proxy`);
   console.log(`  POST /api/openai-proxy - OpenAI API proxy`);
+}).on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Please try a different port or stop the existing process.`);
+  } else {
+    console.error('Server failed to start:', err);
+  }
+  process.exit(1);
 });
 
 module.exports = app;

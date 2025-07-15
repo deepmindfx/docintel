@@ -49,6 +49,11 @@ export const ChatPage: React.FC = () => {
   };
 
   const isApiKeyConfigured = () => {
+    if (selectedAiEngine === 'qwen') {
+      // For Qwen, we use the proxy server, so we assume it's configured
+      // The actual check will happen when we make the request
+      return true;
+    }
     return !!getApiKey(selectedAiEngine);
   };
 
@@ -204,12 +209,14 @@ ${summaries ? `File Summaries:\n${summaries}\n\n` : ''}
       // Handle specific error types for better user guidance
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
         if (selectedAiEngine === 'qwen') {
-          errorMessage = 'Connection to Qwen proxy server failed. Please ensure: 1) The proxy server is running on localhost:3001, 2) Your Qwen API key is configured on the server, 3) Try refreshing the page and trying again.';
+          errorMessage = 'Connection to Qwen proxy server failed. Please ensure the proxy server is running. In a new terminal, run: cd server && npm start';
         } else {
           errorMessage = `Connection to ${selectedAiEngine.toUpperCase()} API failed. Please check your API key and network connection.`;
         }
+      } else if (error.message.includes('Proxy server error (500)')) {
+        errorMessage = 'Proxy server encountered an error. Please check: 1) The server terminal for error details, 2) Your API key is correctly configured in server/.env, 3) Restart the server if needed.';
       } else {
-        errorMessage = `Sorry, I encountered an error while processing your request: ${error instanceof Error ? error.message : 'Unknown error'}. ${selectedAiEngine === 'qwen' ? 'Please ensure the proxy server is running.' : 'Please check your API configuration in Settings and try again.'}`;
+        errorMessage = `Sorry, I encountered an error while processing your request: ${error instanceof Error ? error.message : 'Unknown error'}. ${selectedAiEngine === 'qwen' ? 'Please ensure the proxy server is running by running: cd server && npm start' : 'Please check your API configuration in Settings and try again.'}`;
       }
       
       const errorResponse = {

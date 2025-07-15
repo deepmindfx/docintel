@@ -37,8 +37,7 @@ export const ChatPage: React.FC = () => {
   const getApiKey = (engine: string) => {
     switch (engine) {
       case 'qwen':
-        // Hardcoded API key for testing
-        return 'sk-1c0c9b47d8244a0484498296fb8d3f1c';
+        return organization?.settings?.apiKeys?.qwen;
       case 'openai':
         return organization?.settings?.apiKeys?.openai;
       case 'docintel':

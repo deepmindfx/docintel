@@ -53,15 +53,19 @@ const getInitialState = <T,>(key: string, defaultValue: T): T => {
     const stored = localStorage.getItem(key);
     if (stored) {
       const parsed = JSON.parse(stored, dateReviver);
-      // Deep merge with default values to ensure all properties exist
-      const result = { ...defaultValue, ...parsed };
-      
-      // Ensure arrays remain arrays even if localStorage data is corrupted
-      if (Array.isArray(defaultValue) && !Array.isArray(result)) {
-        return defaultValue;
+      // Handle arrays - return parsed array directly if both are arrays
+      if (Array.isArray(defaultValue) && Array.isArray(parsed)) {
+        return parsed;
       }
       
-      return result;
+      // Handle objects (but not arrays) - merge with defaults
+      if (typeof defaultValue === 'object' && defaultValue !== null && !Array.isArray(defaultValue) &&
+          typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+        return { ...defaultValue, ...parsed };
+      }
+      
+      // For primitives or other cases, return parsed value
+      return parsed;
     }
   } catch (error) {
     console.warn(`Failed to load ${key} from localStorage:`, error);

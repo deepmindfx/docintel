@@ -367,7 +367,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       createFolder,
       updateUsage,
       addChatMessage,
-      getFilesByFolder
+      getFilesByFolder,
       setOrganization
     }}>
       {children}

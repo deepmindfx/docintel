@@ -224,10 +224,23 @@ ${summaries ? `File Summaries:\n${summaries}\n\n` : ''}
     } catch (error) {
       console.error('Error calling AI API:', error);
       
+      let errorMessage = '';
+      
+      // Handle specific error types for better user guidance
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        if (selectedAiEngine === 'qwen') {
+          errorMessage = 'Connection to Qwen API failed. Please check: 1) Your Qwen API key is valid and active, 2) Your network allows connections to dashscope.aliyuncs.com, 3) Try again in a few moments as this may be a temporary server issue.';
+        } else {
+          errorMessage = `Connection to ${selectedAiEngine.toUpperCase()} API failed. Please check your API key and network connection.`;
+        }
+      } else {
+        errorMessage = `Sorry, I encountered an error while processing your request: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your API configuration in Settings and try again.`;
+      }
+      
       const errorResponse = {
         id: (Date.now() + 1).toString(),
         role: 'assistant' as const,
-        content: `Sorry, I encountered an error while processing your request: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your API configuration in Settings and try again.`,
+        content: errorMessage,
         timestamp: new Date(),
         aiEngine: selectedAiEngine
       };

@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
-  const { organization } = useData();
+  const { organization, setOrganization } = useData();
   const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'security' | 'notifications'>('general');
   const [isSaving, setIsSaving] = useState(false);
@@ -69,16 +69,14 @@ export const SettingsPage: React.FC = () => {
       //   body: JSON.stringify({ apiKeys })
       // });
       
-      // Update the organization context if available
-      if (typeof window !== 'undefined' && (window as any).updateOrganization) {
-        (window as any).updateOrganization({
-          ...organization,
-          settings: {
-            ...organization.settings,
-            apiKeys
-          }
-        });
-      }
+      // Update the organization context with new API keys
+      setOrganization({
+        ...organization,
+        settings: {
+          ...organization.settings,
+          apiKeys
+        }
+      });
       
       setSaveMessage('Settings saved successfully!');
       

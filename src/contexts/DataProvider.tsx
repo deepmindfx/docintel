@@ -16,6 +16,7 @@ interface DataContextType {
   updateUsage: (type: 'uploads' | 'chats' | 'storage', amount: number) => void;
   addChatMessage: (message: ChatMessage) => void;
   getFilesByFolder: (folderId: string) => DocumentFile[];
+  setOrganization: (organization: Organization) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -128,7 +129,7 @@ const initialOrganization: Organization = {
     defaultAiEngine: 'qwen',
     enabledAiEngines: ['openai', 'docintel', 'qwen'],
     apiKeys: {
-      qwen: 'sk-1c0c9b47d8244a0484498296fb8d3f1c'
+      qwen: ''
     },
     language: 'en',
     retentionDays: 365,
@@ -367,6 +368,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateUsage,
       addChatMessage,
       getFilesByFolder
+      setOrganization
     }}>
       {children}
     </DataContext.Provider>

@@ -41,19 +41,13 @@ export const ChatPage: React.FC = () => {
       case 'docintel':
         return organization?.settings?.apiKeys?.docintel;
       case 'qwen':
-        // For Qwen, we now use the proxy server, so we don't need the API key on frontend
-        return 'proxy-configured';
+        return organization?.settings?.apiKeys?.qwen;
       default:
         return null;
     }
   };
 
   const isApiKeyConfigured = () => {
-    if (selectedAiEngine === 'qwen') {
-      // For Qwen, we use the proxy server, so we assume it's configured
-      // The actual check will happen when we make the request
-      return true;
-    }
     return !!getApiKey(selectedAiEngine);
   };
 
@@ -91,6 +85,11 @@ export const ChatPage: React.FC = () => {
       let responseContent = '';
       
       if (selectedAiEngine === 'qwen') {
+        const qwenApiKey = getApiKey('qwen');
+        if (!qwenApiKey) {
+          throw new Error('Qwen API key is not configured. Please add your API key in Settings.');
+        }
+        
         // Prepare context from selected folder and files
         let contextInfo = '';
         if (selectedFolder && folderFiles.length > 0) {
@@ -120,7 +119,8 @@ ${summaries ? `File Summaries:\n${summaries}\n\n` : ''}
           body: JSON.stringify({
             contextInfo,
             userMessage: message,
-            engine: 'qwen'
+            engine: 'qwen',
+            apiKey: qwenApiKey
           })
         });
         
@@ -134,7 +134,10 @@ ${summaries ? `File Summaries:\n${summaries}\n\n` : ''}
         
       } else if (selectedAiEngine === 'openai') {
         // OpenAI implementation - can also use proxy if desired
-        const openaiApiKey = organization?.settings?.apiKeys?.openai;
+        const openaiApiKey = getApiKey('openai');
+        if (!openaiApiKey) {
+          throw new Error('OpenAI API key is not configured. Please add your API key in Settings.');
+        }
         
         // Prepare context from selected folder and files
         let contextInfo = '';
@@ -165,7 +168,8 @@ ${summaries ? `File Summaries:\n${summaries}\n\n` : ''}
           body: JSON.stringify({
             contextInfo,
             userMessage: message,
-            engine: 'openai'
+            engine: 'openai',
+            apiKey: openaiApiKey
           })
         });
         

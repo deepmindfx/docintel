@@ -11,6 +11,7 @@ interface RequestBody {
   contextInfo?: string;
   userMessage: string;
   engine: 'qwen' | 'openai';
+  apiKey?: string;
 }
 
 serve(async (req) => {
@@ -20,15 +21,15 @@ serve(async (req) => {
   }
 
   try {
-    const { contextInfo, userMessage, engine }: RequestBody = await req.json()
+    const { contextInfo, userMessage, engine, apiKey }: RequestBody = await req.json()
 
     if (engine === 'qwen') {
-      // Get Qwen API key from environment
-      const qwenApiKey = Deno.env.get('QWEN_API_KEY')
+      // Use provided API key or fall back to environment variable
+      const qwenApiKey = apiKey || Deno.env.get('QWEN_API_KEY')
       if (!qwenApiKey) {
         return new Response(
           JSON.stringify({
-            error: 'Qwen API key is not configured on the server. Please contact your administrator.'
+            error: 'Qwen API key is not configured. Please add your API key in Settings.'
           }),
           {
             status: 500,
@@ -119,12 +120,12 @@ serve(async (req) => {
       }
 
     } else if (engine === 'openai') {
-      // Get OpenAI API key from environment
-      const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+      // Use provided API key or fall back to environment variable
+      const openaiApiKey = apiKey || Deno.env.get('OPENAI_API_KEY')
       if (!openaiApiKey) {
         return new Response(
           JSON.stringify({
-            error: 'OpenAI API key is not configured on the server. Please contact your administrator.'
+            error: 'OpenAI API key is not configured. Please add your API key in Settings.'
           }),
           {
             status: 500,

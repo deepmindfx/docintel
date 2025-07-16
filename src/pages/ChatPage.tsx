@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -22,10 +22,6 @@ export const ChatPage: React.FC = () => {
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
   const [message, setMessage] = useState('');
   const [selectedAiEngine, setSelectedAiEngine] = useState<'openai' | 'docintel' | 'qwen'>('qwen');
-  const [apiKeys, setApiKeys] = useState<{openai: string, qwen: string}>({
-    openai: '',
-    qwen: ''
-  });
   const [messages, setMessages] = useState([
     {
       id: '1',
@@ -37,27 +33,28 @@ export const ChatPage: React.FC = () => {
   ]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load API keys from localStorage on component mount
-  useEffect(() => {
-    try {
-      const savedApiKeys = localStorage.getItem('docIntelApiKeys');
-      if (savedApiKeys) {
-        const parsedKeys = JSON.parse(savedApiKeys);
-        setApiKeys(parsedKeys);
-      }
-    } catch (error) {
-      console.error('Error loading API keys:', error);
-    }
-  }, []);
-
   // Check if API key is available for selected engine
   const getApiKey = (engine: string) => {
-    return apiKeys[engine as keyof typeof apiKeys] || '';
+    switch (engine) {
+      case 'openai':
+        return organization?.settings?.apiKeys?.openai;
+      case 'docintel':
+        return organization?.settings?.apiKeys?.docintel;
+      case 'qwen':
+        // For Qwen, we now use the proxy server, so we don't need the API key on frontend
+        return 'proxy-configured';
+      default:
+        return null;
+    }
   };
 
   const isApiKeyConfigured = () => {
-    const key = getApiKey(selectedAiEngine);
-    return key && key.trim().length > 0;
+    if (selectedAiEngine === 'qwen') {
+      // For Qwen, we use the proxy server, so we assume it's configured
+      // The actual check will happen when we make the request
+      return true;
+    }
+    return !!getApiKey(selectedAiEngine);
   };
 
   const handleSendMessage = async () => {
@@ -94,11 +91,6 @@ export const ChatPage: React.FC = () => {
       let responseContent = '';
       
       if (selectedAiEngine === 'qwen') {
-        const qwenApiKey = getApiKey('qwen');
-        if (!qwenApiKey) {
-          throw new Error('Qwen API key is not configured. Please add your API key in Settings.');
-        }
-        
         // Prepare context from selected folder and files
         let contextInfo = '';
         if (selectedFolder && folderFiles.length > 0) {
@@ -128,8 +120,7 @@ ${summaries ? `File Summaries:\n${summaries}\n\n` : ''}
           body: JSON.stringify({
             contextInfo,
             userMessage: message,
-            engine: 'qwen',
-            apiKey: qwenApiKey
+            engine: 'qwen'
           })
         });
         
@@ -143,10 +134,7 @@ ${summaries ? `File Summaries:\n${summaries}\n\n` : ''}
         
       } else if (selectedAiEngine === 'openai') {
         // OpenAI implementation - can also use proxy if desired
-        const openaiApiKey = getApiKey('openai');
-        if (!openaiApiKey) {
-          throw new Error('OpenAI API key is not configured. Please add your API key in Settings.');
-        }
+        const openaiApiKey = organization?.settings?.apiKeys?.openai;
         
         // Prepare context from selected folder and files
         let contextInfo = '';
@@ -177,8 +165,7 @@ ${summaries ? `File Summaries:\n${summaries}\n\n` : ''}
           body: JSON.stringify({
             contextInfo,
             userMessage: message,
-            engine: 'openai',
-            apiKey: openaiApiKey
+            engine: 'openai'
           })
         });
         

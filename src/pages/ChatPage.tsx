@@ -110,21 +110,23 @@ ${summaries ? `File Summaries:\n${summaries}\n\n` : ''}
           `.trim();
         }
         
-        // Make API call to Qwen via proxy server
-        const response = await fetch('/api/qwen-proxy', {
+        // Make API call to Qwen via Supabase Edge Function
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-proxy`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
           },
           body: JSON.stringify({
             contextInfo,
-            userMessage: message
+            userMessage: message,
+            engine: 'qwen'
           })
         });
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `Proxy server error (${response.status})`);
+          throw new Error(errorData.error || `Supabase Edge Function error (${response.status})`);
         }
         
         const data = await response.json();
@@ -153,36 +155,27 @@ ${summaries ? `File Summaries:\n${summaries}\n\n` : ''}
           `.trim();
         }
         
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        // Make API call to OpenAI via Supabase Edge Function
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-proxy`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openaiApiKey}`
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
           },
           body: JSON.stringify({
-            model: 'gpt-4',
-            messages: [
-              {
-                role: 'system',
-                content: 'You are an AI assistant specialized in document analysis. You can analyze documents, extract information, and answer questions about their content. Provide helpful, accurate, and detailed responses based on the document context provided.'
-              },
-              {
-                role: 'user',
-                content: contextInfo ? `Context: ${contextInfo}\n\nQuestion: ${message}` : message
-              }
-            ],
-            temperature: 0.7,
-            max_tokens: 1500
+            contextInfo,
+            userMessage: message,
+            engine: 'openai'
           })
         });
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(`OpenAI API error (${response.status}): ${errorData.error?.message || 'Unknown error'}`);
+          throw new Error(errorData.error || `Supabase Edge Function error (${response.status})`);
         }
         
         const data = await response.json();
-        responseContent = data.choices[0]?.message?.content || 'No response received from OpenAI';
+        responseContent = data.content || 'No response received from OpenAI';
         
       } else {
         // DocIntel or other fallback
@@ -209,14 +202,14 @@ ${summaries ? `File Summaries:\n${summaries}\n\n` : ''}
       // Handle specific error types for better user guidance
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
         if (selectedAiEngine === 'qwen') {
-          errorMessage = 'Connection to Qwen proxy server failed. Please ensure the proxy server is running. In a new terminal, run: cd server && npm start';
+          errorMessage = 'Connection to Qwen API failed via Supabase Edge Function. Please check your network connection and try again.';
         } else {
-          errorMessage = `Connection to ${selectedAiEngine.toUpperCase()} API failed. Please check your API key and network connection.`;
+          errorMessage = `Connection to ${selectedAiEngine.toUpperCase()} API failed via Supabase Edge Function. Please check your network connection and try again.`;
         }
-      } else if (error.message.includes('Proxy server error (500)')) {
-        errorMessage = 'Proxy server encountered an error. Please check: 1) The server terminal for error details, 2) Your API key is correctly configured in server/.env, 3) Restart the server if needed.';
+      } else if (error.message.includes('Supabase Edge Function error (500)')) {
+        errorMessage = 'Supabase Edge Function encountered an error. Please check: 1) Your API keys are correctly configured as Supabase secrets, 2) The Edge Function is deployed and running.';
       } else {
-        errorMessage = `Sorry, I encountered an error while processing your request: ${error instanceof Error ? error.message : 'Unknown error'}. ${selectedAiEngine === 'qwen' ? 'Please ensure the proxy server is running by running: cd server && npm start' : 'Please check your API configuration in Settings and try again.'}`;
+        errorMessage = `Sorry, I encountered an error while processing your request: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your API configuration and try again.`;
       }
       
       const errorResponse = {

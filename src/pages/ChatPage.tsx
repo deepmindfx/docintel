@@ -22,6 +22,10 @@ export const ChatPage: React.FC = () => {
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
   const [message, setMessage] = useState('');
   const [selectedAiEngine, setSelectedAiEngine] = useState<'openai' | 'docintel' | 'qwen'>('qwen');
+  const [apiKeys, setApiKeys] = useState<{openai: string, qwen: string}>({
+    openai: '',
+    qwen: ''
+  });
   const [messages, setMessages] = useState([
     {
       id: '1',
@@ -33,22 +37,27 @@ export const ChatPage: React.FC = () => {
   ]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Load API keys from localStorage on component mount
+  useEffect(() => {
+    try {
+      const savedApiKeys = localStorage.getItem('docIntelApiKeys');
+      if (savedApiKeys) {
+        const parsedKeys = JSON.parse(savedApiKeys);
+        setApiKeys(parsedKeys);
+      }
+    } catch (error) {
+      console.error('Error loading API keys:', error);
+    }
+  }, []);
+
   // Check if API key is available for selected engine
   const getApiKey = (engine: string) => {
-    switch (engine) {
-      case 'openai':
-        return organization?.settings?.apiKeys?.openai;
-      case 'docintel':
-        return organization?.settings?.apiKeys?.docintel;
-      case 'qwen':
-        return organization?.settings?.apiKeys?.qwen;
-      default:
-        return null;
-    }
+    return apiKeys[engine as keyof typeof apiKeys] || '';
   };
 
   const isApiKeyConfigured = () => {
-    return !!getApiKey(selectedAiEngine);
+    const key = getApiKey(selectedAiEngine);
+    return key && key.trim().length > 0;
   };
 
   const handleSendMessage = async () => {
